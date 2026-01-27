@@ -35,7 +35,7 @@ task_status = {
 
 async def update_progress(step, percent, detail):
     task_status["progress"].update({"step": step, "percent": int(percent), "detail": detail})
-    await asyncio.sleep(0) # 关键：交出控制权，让 FastAPI 能响应前端请求
+    await asyncio.sleep(0)
 
 async def write_log(msg):
     ts = datetime.now().strftime("%H:%M:%S")
@@ -48,42 +48,64 @@ async def run_sync(use_local=False, force_full=False):
     cfg = get_config()
     try:
         if not use_local:
-            await update_progress("正在下载", 2, "启动异步下载任务...")
-            # 使用异步子进程下载
+            await update_progress("正在下载", 0, "正在连接服务器...")
             curl_args = ['-fL', cfg['tree_url'], '-o', RAW_TEMP]
             if cfg['alist_user'] and cfg['alist_pass']:
                 curl_args += ['-u', f"{cfg['alist_user']}:{cfg['alist_pass']}"]
             
-            proc = await asyncio.create_subprocess_exec('curl', *curl_args)
-            await proc.wait()
-            if proc.returncode != 0: raise Exception("目录树下载失败，请检查URL或网络")
+            proc = await asyncio.create_subprocess_exec(
+                'curl', *curl_args,
+                stderr=asyncio.subprocess.PIPE
+            )
 
-            await update_progress("正在转码", 10, "正在进行字符集转换(UTF-16 -> UTF-8)...")
+            # 改进：更健壮的 curl 进度解析逻辑
+            last_p = 0
+            while True:
+                # curl 进度通常以 \r 结尾
+                line_bytes = await proc.stderr.read(512)
+                if not line_bytes: break
+                
+                output = line_bytes.decode('utf-8', errors='ignore')
+                
+                # 匹配百分比、总大小、已下载大小
+                # 兼容多种格式: " 10 50.5M" 或 "100 391k"
+                p_match = re.search(r'(\d+)\s+([\d\.]+[kMGbB]?)\s+(\d+)\s+([\d\.]+[kMGbB]?)', output)
+                
+                if p_match:
+                    try:
+                        p_val = int(p_match.group(1))
+                        total_sz = p_match.group(2)
+                        recv_sz = p_match.group(4)
+                        
+                        # 只有当进度真的变化时才更新，防止跳回 0
+                        if p_val >= last_p:
+                            last_p = p_val
+                            await update_progress("正在下载", p_val * 0.15, f"进度: {recv_sz} / {total_sz} ({p_val}%)")
+                    except:
+                        continue
+
+            await proc.wait()
+            if proc.returncode != 0: raise Exception("下载失败，请检查网络或URL")
+
+            await update_progress("正在转码", 15, "转换字符集 (UTF-16 -> UTF-8)...")
             proc = await asyncio.create_subprocess_exec('iconv', '-f', 'UTF-16LE', '-t', 'UTF-8//IGNORE', RAW_TEMP, '-o', TREE_FILE)
             await proc.wait()
 
             new_hash = hashlib.md5(open(TREE_FILE, 'rb').read()).hexdigest()
             if cfg.get('check_hash') and new_hash == cfg.get('last_hash') and not force_full:
-                await write_log("✨ MD5校验一致，任务跳过")
+                await write_log("✨ MD5一致，无需更新")
                 await update_progress("已完成", 100, "目录树无变化")
                 return
             cfg['last_hash'] = new_hash
             with open(CONFIG_PATH, 'w') as f: json.dump(cfg, f)
 
-        await update_progress("准备解析", 15, "正在初始化数据库连接...")
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS local_files (path_hash TEXT PRIMARY KEY, relative_path TEXT)")
-        cursor.execute("CREATE TEMPORARY TABLE current_scan (path_hash TEXT PRIMARY KEY, relative_path TEXT)")
-
-        user_exts = {e.strip().lower() for e in cfg['extensions'].split(',')}
-        path_stack = {}
-        scan_results = []
-        
-        # 优化点：获取文件行数以便计算百分比，但不读取内容
+        await update_progress("准备解析", 18, "统计文件规模...")
         total_lines = sum(1 for _ in open(TREE_FILE, 'r', encoding='utf-8', errors='ignore'))
         
-        await update_progress("正在解析", 20, "流式读取目录结构...")
+        path_stack = {}
+        scan_results = []
+        user_exts = {e.strip().lower() for e in cfg['extensions'].split(',')}
+
         with open(TREE_FILE, 'r', encoding='utf-8', errors='ignore') as f:
             for i, line in enumerate(f):
                 level = line.count('|')
@@ -93,31 +115,32 @@ async def run_sync(use_local=False, force_full=False):
                 if '.' in clean_name and clean_name.split('.')[-1].lower() in user_exts:
                     full_parts = [path_stack[l] for l in range(level + 1) if l in path_stack]
                     rel_parts = full_parts[int(cfg.get('exclude_levels', 2)):]
-                    if rel_parts:
-                        scan_results.append("/".join(rel_parts))
+                    if rel_parts: scan_results.append("/".join(rel_parts))
                 
                 if i % 3000 == 0:
-                    await update_progress("解析中", 20 + (i/total_lines*20), f"已处理 {i} 行...")
+                    await update_progress("解析结构", 20 + (i/total_lines*20), f"已扫描 {i} 行")
+
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS local_files (path_hash TEXT PRIMARY KEY, relative_path TEXT)")
+        cursor.execute("CREATE TEMPORARY TABLE current_scan (path_hash TEXT PRIMARY KEY, relative_path TEXT)")
 
         total_files = len(scan_results)
-        await write_log(f"📋 结构解析完成，待处理媒体: {total_files}")
-
         for i, r_path in enumerate(scan_results):
             target = os.path.join("/app/strm", r_path + ".strm")
             if not os.path.exists(target) or cfg['sync_mode'] == "full" or force_full:
                 os.makedirs(os.path.dirname(target), exist_ok=True)
                 encoded = urllib.parse.quote(f"/{cfg['mount_path'].strip('/')}/{r_path}")
-                with open(target, 'w') as sf:
-                    sf.write(f"{cfg['alist_url'].rstrip('/')}/d{encoded}")
+                with open(target, 'w') as sf: sf.write(f"{cfg['alist_url'].rstrip('/')}/d{encoded}")
             
             path_h = hashlib.md5(r_path.encode()).hexdigest()
             cursor.execute("INSERT OR IGNORE INTO current_scan VALUES (?, ?)", (path_h, r_path))
             
             if i % 500 == 0:
-                await update_progress("生成文件", 40 + (i/total_files*50), f"进度: {i}/{total_files}")
+                await update_progress("生成STRM", 40 + (i/total_files*50), f"处理中: {i}/{total_files}")
 
         if cfg['sync_clean']:
-            await update_progress("同步清理", 95, "正在比对并删除失效STRM...")
+            await update_progress("清理失效", 95, "正在移除多余文件...")
             cursor.execute("SELECT relative_path FROM local_files WHERE path_hash NOT IN (SELECT path_hash FROM current_scan)")
             for (d_path,) in cursor.fetchall():
                 p = os.path.join("/app/strm", d_path + ".strm")
@@ -127,11 +150,11 @@ async def run_sync(use_local=False, force_full=False):
         cursor.execute("INSERT OR REPLACE INTO local_files SELECT * FROM current_scan")
         conn.commit()
         conn.close()
-        await update_progress("任务完成", 100, f"同步成功，累计管理 {total_files} 个文件")
-        await write_log("✅ 所有操作已圆满完成")
+        await update_progress("任务完成", 100, f"同步成功: {total_files} 文件")
+        await write_log("✅ 任务结束")
     except Exception as e:
         await write_log(f"❌ 运行故障: {str(e)}")
-        await update_progress("任务中止", 0, "错误详见日志")
+        await update_progress("任务中止", 0, str(e))
     finally:
         task_status["running"] = False
 
@@ -150,8 +173,7 @@ async def startup():
                 if time.time() >= next_ts and not task_status["running"]:
                     last_run = time.time()
                     asyncio.create_task(run_sync())
-            else:
-                task_status["next_run"] = None
+            else: task_status["next_run"] = None
             await asyncio.sleep(5)
     asyncio.create_task(scheduler())
 
@@ -188,11 +210,11 @@ async def logout(request: Request):
 @app.get("/login", response_class=HTMLResponse)
 async def login_p():
     return """<body style="background:#0f172a;color:white;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;">
-    <form action="/login" method="post" style="background:#1e293b;padding:2rem;border-radius:1rem;width:320px;box-shadow:0 10px 25px rgba(0,0,0,0.5);">
-    <h2 style="text-align:center;color:#38bdf8;font-weight:bold;font-size:1.5rem;margin-bottom:1.5rem;">115-STRM 系统</h2>
-    <input name="username" placeholder="用户名" style="display:block;margin:1rem 0;padding:0.8rem;width:100%;border-radius:0.5rem;background:#334155;color:white;border:1px solid #475569;outline:none;">
-    <input name="password" type="password" placeholder="密码" style="display:block;margin:1rem 0;padding:0.8rem;width:100%;border-radius:0.5rem;background:#334155;color:white;border:1px solid #475569;outline:none;">
-    <button style="width:100%;padding:0.8rem;background:#0284c7;color:white;border:none;border-radius:0.5rem;cursor:pointer;font-weight:bold;transition:background 0.3s;" onmouseover="this.style.background='#0369a1'" onmouseout="this.style.background='#0284c7'">进入控制台</button>
+    <form action="/login" method="post" style="background:#1e293b;padding:2rem;border-radius:1rem;width:320px;">
+    <h2 style="text-align:center;color:#38bdf8;font-weight:bold;margin-bottom:1.5rem;">115-STRM 登录</h2>
+    <input name="username" placeholder="用户名" style="display:block;margin:1rem 0;padding:0.8rem;width:100%;border-radius:0.5rem;background:#334155;color:white;border:none;outline:none;">
+    <input name="password" type="password" placeholder="密码" style="display:block;margin:1rem 0;padding:0.8rem;width:100%;border-radius:0.5rem;background:#334155;color:white;border:none;outline:none;">
+    <button style="width:100%;padding:0.8rem;background:#0284c7;color:white;border:none;border-radius:0.5rem;cursor:pointer;font-weight:bold;">进入控制台</button>
     </form></body>"""
 
 @app.post("/login")
