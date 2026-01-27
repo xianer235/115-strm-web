@@ -2,8 +2,11 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
     .prog-glow { box-shadow: 0 0 15px rgba(14, 165, 233, 0.4); }
+    .transition-width { transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
     #log-box::-webkit-scrollbar { width: 6px; }
     #log-box::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .anim-pulse { animation: pulse-soft 2s infinite; }
 </style>
 </head>
 <body class="bg-slate-900 text-slate-200 font-sans">
@@ -32,31 +35,31 @@
                     </div>
                     <div class="text-right"><span id="prog-percent" class="text-3xl font-mono font-black text-sky-500">0%</span></div>
                 </div>
-                <div class="w-full bg-slate-950 rounded-full h-4 p-1 overflow-hidden">
-                    <div id="prog-bar" class="bg-gradient-to-r from-sky-600 to-sky-400 h-full rounded-full transition-all duration-500 prog-glow" style="width: 0%"></div>
+                <div class="w-full bg-slate-950 rounded-full h-4 p-1 overflow-hidden shadow-inner">
+                    <div id="prog-bar" class="bg-gradient-to-r from-sky-600 to-sky-400 h-full rounded-full transition-width prog-glow" style="width: 0%"></div>
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button onclick="triggerTask(false, false)" class="bg-sky-600 hover:bg-sky-500 p-5 rounded-2xl font-bold transition-all active:scale-95">🌐 联网同步更新</button>
-                <button onclick="triggerTask(true, false)" class="bg-slate-700 hover:bg-slate-600 p-5 rounded-2xl font-bold transition-all active:scale-95">🛠 本地调试</button>
-                <button onclick="triggerTask(false, true)" class="border-2 border-red-500/50 text-red-400 hover:bg-red-500/10 p-5 rounded-2xl font-bold transition-all active:scale-95">🔥 强制全量重刷</button>
+                <button onclick="triggerTask(false, false)" class="bg-sky-600 hover:bg-sky-500 p-5 rounded-2xl font-bold transition-all active:scale-95 shadow-lg">🌐 联网同步更新</button>
+                <button onclick="triggerTask(true, false)" class="bg-slate-700 hover:bg-slate-600 p-5 rounded-2xl font-bold transition-all active:scale-95 shadow-lg">🛠 本地调试</button>
+                <button onclick="triggerTask(false, true)" class="border-2 border-red-500/50 text-red-400 hover:bg-red-500/10 p-5 rounded-2xl font-bold transition-all active:scale-95 shadow-lg">🔥 强制全量重刷</button>
             </div>
             <div class="bg-slate-950/80 rounded-3xl border border-slate-800 p-4 shadow-inner">
-                <div id="log-box" class="h-[450px] overflow-y-auto font-mono text-[13px] text-emerald-500/80 p-2 scroll-smooth"></div>
+                <div id="log-box" class="h-[400px] overflow-y-auto font-mono text-[13px] text-emerald-500/80 p-2 scroll-smooth"></div>
             </div>
         </div>
         <div id="page-settings" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 space-y-4">
-                <h3 class="text-sky-400 font-bold border-b border-slate-700 pb-2">🔗 核心连接</h3>
-                <label class="block"><span class="text-xs text-slate-500 uppercase">AList 地址</span><input id="alist_url" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none"></label>
-                <label class="block"><span class="text-xs text-slate-500 uppercase">目录树下载 URL</span><input id="tree_url" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none"></label>
+            <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 space-y-4 shadow-xl">
+                <h3 class="text-sky-400 font-bold border-b border-slate-700 pb-2 flex items-center gap-2">🔗 核心连接</h3>
+                <label class="block"><span class="text-xs text-slate-500 uppercase">AList 地址</span><input id="alist_url" placeholder="http://192.168.1.x:5244" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none focus:border-sky-500 transition-colors"></label>
+                <label class="block"><span class="text-xs text-slate-500 uppercase">目录树下载 URL</span><input id="tree_url" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none focus:border-sky-500 transition-colors"></label>
                 <div class="grid grid-cols-2 gap-4">
                     <label class="block"><span class="text-xs text-slate-500">AList 账号</span><input id="alist_user" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                     <label class="block"><span class="text-xs text-slate-500">AList 密码</span><input id="alist_pass" type="password" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                 </div>
             </div>
-            <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 space-y-4">
-                <h3 class="text-emerald-400 font-bold border-b border-slate-700 pb-2">⚙️ 自动化逻辑</h3>
+            <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 space-y-4 shadow-xl">
+                <h3 class="text-emerald-400 font-bold border-b border-slate-700 pb-2 flex items-center gap-2">⚙️ 自动化逻辑</h3>
                 <div class="grid grid-cols-2 gap-4">
                     <label class="block"><span class="text-xs text-slate-500">排除路径层级</span><input id="exclude_levels" type="number" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                     <label class="block"><span class="text-xs text-slate-500">115 挂载路径</span><input id="mount_path" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
@@ -64,24 +67,24 @@
                 <div class="grid grid-cols-2 gap-4">
                     <label class="block"><span class="text-xs text-slate-500">同步频率 (分钟)</span><input id="cron_hour" placeholder="不填则禁用" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                     <label class="block"><span class="text-xs text-slate-500">写入模式</span>
-                        <select id="sync_mode" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 appearance-none">
+                        <select id="sync_mode" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 appearance-none outline-none">
                             <option value="incremental">增量模式</option>
                             <option value="full">全量模式</option>
                         </select>
                     </label>
                 </div>
                 <div class="flex gap-8 py-2">
-                    <label class="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" id="check_hash" class="w-5 h-5 rounded-lg accent-sky-500"> MD5校验</label>
-                    <label class="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" id="sync_clean" class="w-5 h-5 rounded-lg accent-sky-500"> 自动清理失效</label>
+                    <label class="flex items-center gap-2 cursor-pointer text-sm hover:text-white"><input type="checkbox" id="check_hash" class="w-5 h-5 rounded-lg accent-sky-500"> MD5校验</label>
+                    <label class="flex items-center gap-2 cursor-pointer text-sm hover:text-white"><input type="checkbox" id="sync_clean" class="w-5 h-5 rounded-lg accent-sky-500"> 自动清理失效</label>
                 </div>
                 <label class="block"><span class="text-xs text-slate-500">文件白名单</span><input id="extensions" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
             </div>
-            <div class="md:col-span-2 bg-slate-800 p-6 rounded-3xl border border-slate-700 flex justify-between items-center">
+            <div class="md:col-span-2 bg-slate-800 p-6 rounded-3xl border border-slate-700 flex justify-between items-center shadow-xl">
                 <div class="flex gap-4">
-                    <input id="username" placeholder="后台账号" class="bg-slate-900 border-slate-700 rounded-xl p-3 text-sm">
-                    <input id="password" type="password" placeholder="后台密码" class="bg-slate-900 border-slate-700 rounded-xl p-3 text-sm">
+                    <input id="username" placeholder="后台账号" class="bg-slate-900 border-slate-700 rounded-xl p-3 text-sm outline-none focus:border-sky-500">
+                    <input id="password" type="password" placeholder="后台密码" class="bg-slate-900 border-slate-700 rounded-xl p-3 text-sm outline-none focus:border-sky-500">
                 </div>
-                <button onclick="saveSettings()" class="bg-emerald-600 hover:bg-emerald-500 px-12 py-4 rounded-2xl font-bold transition-all active:scale-95">保存全部设置</button>
+                <button onclick="saveSettings()" class="bg-emerald-600 hover:bg-emerald-500 px-12 py-4 rounded-2xl font-bold transition-all active:scale-95 shadow-lg">保存全部设置</button>
             </div>
         </div>
     </main>
@@ -89,8 +92,8 @@
         function switchTab(tab) {
             document.getElementById('page-task').classList.toggle('hidden', tab !== 'task');
             document.getElementById('page-settings').classList.toggle('hidden', tab !== 'settings');
-            document.getElementById('tab-task').className = tab === 'task' ? 'text-sky-400 border-b-2 border-sky-400 pb-1' : 'text-slate-400 hover:text-white pb-1';
-            document.getElementById('tab-settings').className = tab === 'settings' ? 'text-sky-400 border-b-2 border-sky-400 pb-1' : 'text-slate-400 hover:text-white pb-1';
+            document.getElementById('tab-task').className = tab === 'task' ? 'text-sky-400 border-b-2 border-sky-400 pb-1 uppercase' : 'text-slate-400 hover:text-white pb-1 uppercase';
+            document.getElementById('tab-settings').className = tab === 'settings' ? 'text-sky-400 border-b-2 border-sky-400 pb-1 uppercase' : 'text-slate-400 hover:text-white pb-1 uppercase';
         }
         async function triggerTask(local, full) {
             fetch('/start', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({use_local: local, force_full: full})});
@@ -104,32 +107,43 @@
             alert('设置保存成功！');
         }
         let lastLogLen = 0;
+        let isRunning = false;
         setInterval(async () => {
             try {
                 const res = await fetch('/logs');
-                if (res.status === 401 || res.redirected) { window.location.href = '/login'; return; }
+                if (res.status === 401) { window.location.href = '/login'; return; }
                 const data = await res.json();
+                
                 const logBox = document.getElementById('log-box');
                 if (data.logs.length !== lastLogLen) {
                     logBox.innerHTML = data.logs.join('<br>');
                     logBox.scrollTop = logBox.scrollHeight;
                     lastLogLen = data.logs.length;
                 }
+                
                 const p = data.progress;
                 document.getElementById('prog-step').innerText = p.step;
                 document.getElementById('prog-percent').innerText = p.percent + '%';
                 document.getElementById('prog-bar').style.width = p.percent + '%';
                 document.getElementById('prog-detail').innerText = p.detail;
 
+                // 正在执行时增加呼吸灯效果
+                if (data.running) {
+                    document.getElementById('prog-bar').classList.add('anim-pulse');
+                } else {
+                    document.getElementById('prog-bar').classList.remove('anim-pulse');
+                }
+
                 const nextRunContainer = document.getElementById('next-run-container');
-                if (data.next_run) {
+                if (data.next_run && !data.running) {
                     nextRunContainer.classList.remove('hidden');
                     document.getElementById('next-run-time').innerText = data.next_run;
                 } else {
                     nextRunContainer.classList.add('hidden');
                 }
             } catch(e) {}
-        }, 1000);
+        }, 800); // 略微加快轮询频率，配合 CSS 动画更顺滑
+        
         async function init() {
             const res = await fetch('/get_settings');
             const cfg = await res.json();
