@@ -1,15 +1,19 @@
 import os, json, sqlite3, asyncio, re, hashlib, time, urllib.parse
-from fastapi import FastAPI, Request, BackgroundTasks,Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Request, BackgroundTasks, Form
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from datetime import datetime
 
 app = FastAPI()
 
-app.add_middleware(SessionMiddleware, secret_key="115-strm-v7-final")
-
-def check_login(request: Request):
-    return request.session.get("logged_in") == True
+# --- 核心修复 1：中间件配置 ---
+# 必须关闭 https_only，手机在 HTTP 环境下才能正常存储 Session
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key="115-strm-v7-final-fixed",
+    https_only=False,
+    same_site="lax"
+)
 
 CONFIG_PATH = "/app/config/settings.json"
 DB_PATH = "/app/config/data.db"
@@ -62,31 +66,21 @@ async def run_sync(use_local=False, force_full=False):
                 stderr=asyncio.subprocess.PIPE
             )
 
-            # 改进：更健壮的 curl 进度解析逻辑
             last_p = 0
             while True:
-                # curl 进度通常以 \r 结尾
                 line_bytes = await proc.stderr.read(512)
                 if not line_bytes: break
-                
                 output = line_bytes.decode('utf-8', errors='ignore')
-                
-                # 匹配百分比、总大小、已下载大小
-                # 兼容多种格式: " 10 50.5M" 或 "100 391k"
                 p_match = re.search(r'(\d+)\s+([\d\.]+[kMGbB]?)\s+(\d+)\s+([\d\.]+[kMGbB]?)', output)
-                
                 if p_match:
                     try:
                         p_val = int(p_match.group(1))
                         total_sz = p_match.group(2)
                         recv_sz = p_match.group(4)
-                        
-                        # 只有当进度真的变化时才更新，防止跳回 0
                         if p_val >= last_p:
                             last_p = p_val
                             await update_progress("正在下载", p_val * 0.15, f"进度: {recv_sz} / {total_sz} ({p_val}%)")
-                    except:
-                        continue
+                    except: continue
 
             await proc.wait()
             if proc.returncode != 0: raise Exception("下载失败，请检查网络或URL")
@@ -181,62 +175,68 @@ async def startup():
             await asyncio.sleep(5)
     asyncio.create_task(scheduler())
 
+# --- 核心修复 2：登录与路由保护逻辑 ---
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    if request.session.get("logged_in"):
+        return RedirectResponse(url="/", status_code=303)
+    path = "templates/login.html"
+    if not os.path.exists(path):
+        return HTMLResponse(f"<h3>错误：找不到登录模板 {path}</h3>", status_code=404)
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+@app.post("/login")
+async def do_login(request: Request):
+    try:
+        # 改为接收 JSON 数据，彻底避开传统 Form POST 拦截
+        data = await request.json()
+        u = data.get("username")
+        p = data.get("password")
+        cfg = get_config()
+        if u == cfg.get('username') and p == cfg.get('password'):
+            request.session["logged_in"] = True
+            return {"ok": True}
+        return JSONResponse(status_code=401, content={"ok": False, "msg": "密码错误"})
+    except:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "请求非法"})
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    if not check_login(request):
-        return RedirectResponse(url="/login")
-    
-    # 增加健壮性检查
+    if not request.session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=303)
     path = "templates/index.html"
-    if not os.path.exists(path):
-        return HTMLResponse(f"<h3>错误：找不到模板文件 {path}</h3>", status_code=404)
-        
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
 @app.get("/get_settings")
-async def gs(): return get_config()
+async def gs(request: Request): 
+    if not request.session.get("logged_in"): return JSONResponse(status_code=401, content={"err": 1})
+    return get_config()
 
 @app.post("/save_settings")
-async def ss(data: dict):
+async def ss(request: Request, data: dict):
+    if not request.session.get("logged_in"): return JSONResponse(status_code=401, content={"err": 1})
     cfg = get_config()
     cfg.update(data)
     with open(CONFIG_PATH, 'w') as f: json.dump(cfg, f)
     return {"ok": True}
 
 @app.post("/start")
-async def st(data: dict, bt: BackgroundTasks):
+async def st(request: Request, data: dict, bt: BackgroundTasks):
+    if not request.session.get("logged_in"): return JSONResponse(status_code=401, content={"err": 1})
     if not task_status["running"]:
         bt.add_task(run_sync, use_local=data.get("use_local", False), force_full=data.get("force_full", False))
         return {"status": "started"}
     return {"status": "busy"}
 
 @app.get("/logs")
-async def lg(): return task_status
+async def lg(request: Request): 
+    if not request.session.get("logged_in"): return JSONResponse(status_code=401, content={"err": 1})
+    return task_status
 
 @app.get("/logout")
 async def logout(request: Request):
     request.session.clear()
-    return RedirectResponse("/login")
-
-@app.get("/login", response_class=HTMLResponse)
-async def login_p():
-    path = "templates/login.html"
-    if not os.path.exists(path):
-        return HTMLResponse(f"<h3>错误：找不到登录模板 {path}</h3>", status_code=404)
-        
-    with open(path, "r", encoding="utf-8") as f:
-        return HTMLResponse(f.read())
-
-@app.post("/login")
-async def do_l(request: Request):
-    form = await request.form()
-    cfg = get_config()
-    # 确保从 Form 中获取数据
-    u = form.get("username")
-    p = form.get("password")
-    
-    if u == cfg.get('username') and p == cfg.get('password'):
-        request.session["logged_in"] = True
-        return RedirectResponse("/", status_code=303) # 建议使用 303 防止表单重提
-    return RedirectResponse("/login")
+    return RedirectResponse("/login", status_code=303)

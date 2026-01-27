@@ -1,5 +1,9 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><title>登录 - 115-STRM</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>登录 - 115-STRM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-200 h-screen flex items-center justify-center font-sans">
     <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-2xl w-full max-w-md">
@@ -7,16 +11,61 @@
             <h1 class="text-3xl font-black bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">115-STRM 系统</h1>
             <p class="text-slate-400 text-sm mt-2">请验证您的身份以继续</p>
         </div>
+        
         <div class="bg-sky-500/10 border border-sky-500/20 rounded-2xl p-4 mb-6">
             <div class="text-sky-400 text-xs font-bold uppercase mb-1">📢 初始凭据</div>
             <div class="text-sm text-slate-300">账号：<span class="text-white font-mono">admin</span></div>
             <div class="text-sm text-slate-300">密码：<span class="text-white font-mono">admin123</span></div>
             <div class="text-[11px] text-amber-400/80 mt-2 italic">⚠️ 温馨提醒：登录后请务必在配置页面修改密码以保安全。</div>
         </div>
-        <form action="/login" method="post" class="space-y-4">
-            <input type="text" name="username" placeholder="管理账号" class="w-full bg-slate-900 border-slate-700 rounded-xl p-4 outline-none focus:border-sky-500 transition-colors">
-            <input type="password" name="password" placeholder="访问密码" class="w-full bg-slate-900 border-slate-700 rounded-xl p-4 outline-none focus:border-sky-500 transition-colors">
-            <button type="submit" class="w-full bg-sky-600 hover:bg-sky-500 p-4 rounded-xl font-bold transition-all active:scale-95 shadow-lg text-white mt-4">进入管理后台</button>
+
+        <form id="loginForm" class="space-y-4">
+            <input type="text" id="username" name="username" placeholder="管理账号" required
+                   class="w-full bg-slate-900 border-slate-700 rounded-xl p-4 outline-none focus:border-sky-500 transition-colors">
+            <input type="password" id="password" name="password" placeholder="访问密码" required
+                   class="w-full bg-slate-900 border-slate-700 rounded-xl p-4 outline-none focus:border-sky-500 transition-colors">
+            <button type="submit" id="submitBtn" 
+                    class="w-full bg-sky-600 hover:bg-sky-500 p-4 rounded-xl font-bold transition-all active:scale-95 shadow-lg text-white mt-4">
+                进入管理后台
+            </button>
         </form>
     </div>
-</body></html>
+
+    <script>
+        document.getElementById('loginForm').onsubmit = async (e) => {
+            e.preventDefault(); // 阻止表单原生跳转
+            
+            const btn = document.getElementById('submitBtn');
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            
+            btn.disabled = true;
+            btn.innerText = '正在验证...';
+
+            try {
+                // 使用 Fetch 异步发送 JSON
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u, password: p })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.ok) {
+                    // 登录成功，JS 控制页面跳转
+                    window.location.href = '/';
+                } else {
+                    alert('登录失败：' + (result.msg || '账号或密码错误'));
+                    btn.disabled = false;
+                    btn.innerText = '进入管理后台';
+                }
+            } catch (err) {
+                alert('网络错误，请检查服务器是否运行');
+                btn.disabled = false;
+                btn.innerText = '进入管理后台';
+            }
+        };
+    </script>
+</body>
+</html>
