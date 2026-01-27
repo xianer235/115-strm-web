@@ -1,11 +1,15 @@
 import os, json, sqlite3, asyncio, re, hashlib, time, urllib.parse
-from fastapi import FastAPI, Request, BackgroundTasks
+from fastapi import FastAPI, Request, BackgroundTasks,Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from datetime import datetime
 
 app = FastAPI()
+
 app.add_middleware(SessionMiddleware, secret_key="115-strm-v7-final")
+
+def check_login(request: Request):
+    return request.session.get("logged_in") == True
 
 CONFIG_PATH = "/app/config/settings.json"
 DB_PATH = "/app/config/data.db"
@@ -177,10 +181,18 @@ async def startup():
             await asyncio.sleep(5)
     asyncio.create_task(scheduler())
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    if not request.session.get("logged_in"): return RedirectResponse("/login")
-    with open("app/templates/index.html") as f: return HTMLResponse(f.read())
+    if not check_login(request):
+        return RedirectResponse(url="/login")
+    
+    # 增加健壮性检查
+    path = "templates/index.html"
+    if not os.path.exists(path):
+        return HTMLResponse(f"<h3>错误：找不到模板文件 {path}</h3>", status_code=404)
+        
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
 
 @app.get("/get_settings")
 async def gs(): return get_config()
@@ -209,19 +221,22 @@ async def logout(request: Request):
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_p():
-    return """<body style="background:#0f172a;color:white;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;">
-    <form action="/login" method="post" style="background:#1e293b;padding:2rem;border-radius:1rem;width:320px;">
-    <h2 style="text-align:center;color:#38bdf8;font-weight:bold;margin-bottom:1.5rem;">115-STRM 登录</h2>
-    <input name="username" placeholder="用户名" style="display:block;margin:1rem 0;padding:0.8rem;width:100%;border-radius:0.5rem;background:#334155;color:white;border:none;outline:none;">
-    <input name="password" type="password" placeholder="密码" style="display:block;margin:1rem 0;padding:0.8rem;width:100%;border-radius:0.5rem;background:#334155;color:white;border:none;outline:none;">
-    <button style="width:100%;padding:0.8rem;background:#0284c7;color:white;border:none;border-radius:0.5rem;cursor:pointer;font-weight:bold;">进入控制台</button>
-    </form></body>"""
+    path = "templates/login.html"
+    if not os.path.exists(path):
+        return HTMLResponse(f"<h3>错误：找不到登录模板 {path}</h3>", status_code=404)
+        
+    with open(path, "r", encoding="utf-8") as f:
+        return HTMLResponse(f.read())
 
 @app.post("/login")
 async def do_l(request: Request):
     form = await request.form()
     cfg = get_config()
-    if form.get("username") == cfg['username'] and form.get("password") == cfg['password']:
+    # 确保从 Form 中获取数据
+    u = form.get("username")
+    p = form.get("password")
+    
+    if u == cfg.get('username') and p == cfg.get('password'):
         request.session["logged_in"] = True
-        return RedirectResponse("/", status_code=302)
+        return RedirectResponse("/", status_code=303) # 建议使用 303 防止表单重提
     return RedirectResponse("/login")

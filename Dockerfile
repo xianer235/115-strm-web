@@ -1,21 +1,26 @@
-# 第一阶段：构建环境
-FROM python:3.11-slim AS builder
-WORKDIR /app
-RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple \
-    fastapi uvicorn starlette itsdangerous python-multipart
+FROM python:3.12-slim
 
-# 第二阶段：运行环境
-FROM python:3.11-slim
 WORKDIR /app
-# 仅安装运行必须的最小工具包
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \
-    apt-get update && apt-get install -y --no-install-recommends curl libc-bin && \
-    rm -rf /var/lib/apt/lists/*
-    
-# 从构建阶段拷贝已安装的库
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin/uvicorn /usr/local/bin/uvicorn
 
+# 安装转码和下载必须的工具
+RUN apt-get update && apt-get install -y \
+    curl \
+    libc-bin \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制当前目录下所有文件
 COPY . .
+
+# 安装依赖（itsdangerous 是 SessionMiddleware 必需的）
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn \
+    pydantic \
+    python-multipart \
+    starlette \
+    itsdangerous
+
 EXPOSE 18080
+
+# 启动（确保文件名是 main.py，app 对象名是 app）
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "18080"]
