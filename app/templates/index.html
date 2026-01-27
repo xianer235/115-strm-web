@@ -11,62 +11,59 @@
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <h1 class="text-xl font-bold bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">115-STRM 系统</h1>
             <div class="flex space-x-8 text-sm font-bold">
-                <button onclick="switchTab('task')" id="tab-task" class="text-sky-400 border-b-2 border-sky-400 pb-1 uppercase tracking-tighter">控制中心</button>
-                <button onclick="switchTab('settings')" id="tab-settings" class="text-slate-400 hover:text-white pb-1 uppercase tracking-tighter">参数配置</button>
+                <button onclick="switchTab('task')" id="tab-task" class="text-sky-400 border-b-2 border-sky-400 pb-1 uppercase">控制中心</button>
+                <button onclick="switchTab('settings')" id="tab-settings" class="text-slate-400 hover:text-white pb-1 uppercase">参数配置</button>
             </div>
         </div>
     </nav>
-
     <main class="max-w-6xl mx-auto p-6">
         <div id="page-task" class="space-y-6">
-            <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-2xl relative overflow-hidden">
+            <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-2xl">
                 <div class="flex justify-between items-end mb-4">
                     <div>
                         <span id="prog-step" class="text-2xl font-black text-white">就绪</span>
-                        <div id="prog-detail" class="text-xs text-slate-400 mt-1 italic">等待任务指令启动...</div>
+                        <div id="next-run-container" class="hidden text-xs text-emerald-400 mt-1 font-bold">
+                            ⏱ 下次自动同步: <span id="next-run-time">--:--:--</span>
+                        </div>
+                        <div id="prog-detail" class="text-xs text-slate-400 mt-1 italic">等待指令...</div>
                     </div>
-                    <div class="text-right">
-                        <span id="prog-percent" class="text-3xl font-mono font-black text-sky-500">0%</span>
-                    </div>
+                    <div class="text-right"><span id="prog-percent" class="text-3xl font-mono font-black text-sky-500">0%</span></div>
                 </div>
                 <div class="w-full bg-slate-950 rounded-full h-4 p-1 overflow-hidden">
-                    <div id="prog-bar" class="bg-gradient-to-r from-sky-600 to-sky-400 h-full rounded-full transition-all duration-500 ease-out prog-glow" style="width: 0%"></div>
+                    <div id="prog-bar" class="bg-gradient-to-r from-sky-600 to-sky-400 h-full rounded-full transition-all duration-500 prog-glow" style="width: 0%"></div>
                 </div>
             </div>
-
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button onclick="triggerTask(false, false)" class="bg-sky-600 hover:bg-sky-500 p-5 rounded-2xl font-bold shadow-lg shadow-sky-900/40 transition-all hover:-translate-y-1 active:scale-95">🌐 联网同步更新</button>
-                <button onclick="triggerTask(true, false)" class="bg-slate-700 hover:bg-slate-600 p-5 rounded-2xl font-bold transition-all hover:-translate-y-1 active:scale-95">🛠 本地目录树调试</button>
+                <button onclick="triggerTask(false, false)" class="bg-sky-600 hover:bg-sky-500 p-5 rounded-2xl font-bold transition-all active:scale-95">🌐 联网同步更新</button>
+                <button onclick="triggerTask(true, false)" class="bg-slate-700 hover:bg-slate-600 p-5 rounded-2xl font-bold transition-all active:scale-95">🛠 本地调试</button>
                 <button onclick="triggerTask(false, true)" class="border-2 border-red-500/50 text-red-400 hover:bg-red-500/10 p-5 rounded-2xl font-bold transition-all active:scale-95">🔥 强制全量重刷</button>
             </div>
-            
-            <div class="bg-slate-950/80 rounded-3xl border border-slate-800 p-4 shadow-inner overflow-hidden">
+            <div class="bg-slate-950/80 rounded-3xl border border-slate-800 p-4 shadow-inner">
                 <div id="log-box" class="h-[450px] overflow-y-auto font-mono text-[13px] text-emerald-500/80 p-2 scroll-smooth"></div>
             </div>
         </div>
-
-        <div id="page-settings" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-bottom-4 duration-500">
+        <div id="page-settings" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 space-y-4">
-                <h3 class="text-sky-400 font-bold border-b border-slate-700 pb-2 flex items-center gap-2">🔗 核心连接</h3>
-                <label class="block"><span class="text-xs text-slate-500 uppercase">AList 地址</span><input id="alist_url" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none focus:ring-1 ring-sky-500"></label>
-                <label class="block"><span class="text-xs text-slate-500 uppercase">目录树下载 URL</span><input id="tree_url" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none focus:ring-1 ring-sky-500"></label>
+                <h3 class="text-sky-400 font-bold border-b border-slate-700 pb-2">🔗 核心连接</h3>
+                <label class="block"><span class="text-xs text-slate-500 uppercase">AList 地址</span><input id="alist_url" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none"></label>
+                <label class="block"><span class="text-xs text-slate-500 uppercase">目录树下载 URL</span><input id="tree_url" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none"></label>
                 <div class="grid grid-cols-2 gap-4">
                     <label class="block"><span class="text-xs text-slate-500">AList 账号</span><input id="alist_user" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                     <label class="block"><span class="text-xs text-slate-500">AList 密码</span><input id="alist_pass" type="password" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                 </div>
             </div>
             <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 space-y-4">
-                <h3 class="text-emerald-400 font-bold border-b border-slate-700 pb-2 flex items-center gap-2">⚙️ 自动化逻辑</h3>
+                <h3 class="text-emerald-400 font-bold border-b border-slate-700 pb-2">⚙️ 自动化逻辑</h3>
                 <div class="grid grid-cols-2 gap-4">
                     <label class="block"><span class="text-xs text-slate-500">排除路径层级</span><input id="exclude_levels" type="number" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                     <label class="block"><span class="text-xs text-slate-500">115 挂载路径</span><input id="mount_path" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <label class="block"><span class="text-xs text-slate-500">定时执行 (0-23)</span><input id="cron_hour" placeholder="不填则禁用" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
+                    <label class="block"><span class="text-xs text-slate-500">同步频率 (分钟)</span><input id="cron_hour" placeholder="不填则禁用" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                     <label class="block"><span class="text-xs text-slate-500">写入模式</span>
                         <select id="sync_mode" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 appearance-none">
-                            <option value="incremental">增量模式 (跳过已存在)</option>
-                            <option value="full">全量模式 (覆盖所有STRM)</option>
+                            <option value="incremental">增量模式</option>
+                            <option value="full">全量模式</option>
                         </select>
                     </label>
                 </div>
@@ -81,11 +78,10 @@
                     <input id="username" placeholder="后台账号" class="bg-slate-900 border-slate-700 rounded-xl p-3 text-sm">
                     <input id="password" type="password" placeholder="后台密码" class="bg-slate-900 border-slate-700 rounded-xl p-3 text-sm">
                 </div>
-                <button onclick="saveSettings()" class="bg-emerald-600 hover:bg-emerald-500 px-12 py-4 rounded-2xl font-bold shadow-xl transition-all active:scale-95">保存全部设置</button>
+                <button onclick="saveSettings()" class="bg-emerald-600 hover:bg-emerald-500 px-12 py-4 rounded-2xl font-bold transition-all active:scale-95">保存全部设置</button>
             </div>
         </div>
     </main>
-
     <script>
         function switchTab(tab) {
             document.getElementById('page-task').classList.toggle('hidden', tab !== 'task');
@@ -93,47 +89,44 @@
             document.getElementById('tab-task').className = tab === 'task' ? 'text-sky-400 border-b-2 border-sky-400 pb-1' : 'text-slate-400 hover:text-white pb-1';
             document.getElementById('tab-settings').className = tab === 'settings' ? 'text-sky-400 border-b-2 border-sky-400 pb-1' : 'text-slate-400 hover:text-white pb-1';
         }
-
         async function triggerTask(local, full) {
-            fetch('/start', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({use_local: local, force_full: full})
-            });
+            fetch('/start', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({use_local: local, force_full: full})});
         }
-
         async function saveSettings() {
             const cfg = {};
-            ['alist_url', 'tree_url', 'alist_user', 'alist_pass', 'exclude_levels', 'mount_path', 'cron_hour', 'sync_mode', 'extensions', 'username', 'password'].forEach(id => {
-                cfg[id] = document.getElementById(id).value;
-            });
+            ['alist_url', 'tree_url', 'alist_user', 'alist_pass', 'exclude_levels', 'mount_path', 'cron_hour', 'sync_mode', 'extensions', 'username', 'password'].forEach(id => { cfg[id] = document.getElementById(id).value; });
             cfg.check_hash = document.getElementById('check_hash').checked;
             cfg.sync_clean = document.getElementById('sync_clean').checked;
             await fetch('/save_settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg)});
             alert('设置保存成功！');
         }
-
         let lastLogLen = 0;
         setInterval(async () => {
             try {
                 const res = await fetch('/logs');
                 const data = await res.json();
                 const logBox = document.getElementById('log-box');
-                
                 if (data.logs.length !== lastLogLen) {
                     logBox.innerHTML = data.logs.join('<br>');
                     logBox.scrollTop = logBox.scrollHeight;
                     lastLogLen = data.logs.length;
                 }
-                
                 const p = data.progress;
                 document.getElementById('prog-step').innerText = p.step;
                 document.getElementById('prog-percent').innerText = p.percent + '%';
                 document.getElementById('prog-bar').style.width = p.percent + '%';
                 document.getElementById('prog-detail').innerText = p.detail;
+
+                // 更新下一次执行时间显示
+                const nextRunContainer = document.getElementById('next-run-container');
+                if (data.next_run) {
+                    nextRunContainer.classList.remove('hidden');
+                    document.getElementById('next-run-time').innerText = data.next_run;
+                } else {
+                    nextRunContainer.classList.add('hidden');
+                }
             } catch(e) {}
         }, 1000);
-
         async function init() {
             const res = await fetch('/get_settings');
             const cfg = await res.json();
