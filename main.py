@@ -104,7 +104,7 @@ async def run_sync(use_local=False, force_full=False):
         
         path_stack = {}
         scan_results = []
-        user_exts = {e.strip().lower() for e in cfg['extensions'].split(',')}
+        user_exts = {e.strip().lower() for e in cfg['extensions'].replace('，', ',').split(',')}
 
         with open(TREE_FILE, 'r', encoding='utf-8', errors='ignore') as f:
             for i, line in enumerate(f):
