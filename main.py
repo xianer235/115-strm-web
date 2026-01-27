@@ -137,7 +137,6 @@ async def startup():
                     asyncio.create_task(run_sync())
             else:
                 task_status["next_run"] = None
-            
             await asyncio.sleep(10)
     asyncio.create_task(scheduler())
 
@@ -165,6 +164,11 @@ async def st(data: dict, bt: BackgroundTasks):
 
 @app.get("/logs")
 async def lg(): return task_status
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/login")
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_p():

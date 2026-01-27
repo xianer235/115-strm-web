@@ -10,9 +10,12 @@
     <nav class="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 p-4 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <h1 class="text-xl font-bold bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">115-STRM 系统</h1>
-            <div class="flex space-x-8 text-sm font-bold">
-                <button onclick="switchTab('task')" id="tab-task" class="text-sky-400 border-b-2 border-sky-400 pb-1 uppercase">控制中心</button>
-                <button onclick="switchTab('settings')" id="tab-settings" class="text-slate-400 hover:text-white pb-1 uppercase">参数配置</button>
+            <div class="flex items-center space-x-8">
+                <div class="flex space-x-8 text-sm font-bold">
+                    <button onclick="switchTab('task')" id="tab-task" class="text-sky-400 border-b-2 border-sky-400 pb-1 uppercase">控制中心</button>
+                    <button onclick="switchTab('settings')" id="tab-settings" class="text-slate-400 hover:text-white pb-1 uppercase">参数配置</button>
+                </div>
+                <a href="/logout" class="text-xs bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white px-3 py-1 rounded-lg border border-red-500/20 transition-all font-bold">退出登录</a>
             </div>
         </div>
     </nav>
@@ -104,6 +107,7 @@
         setInterval(async () => {
             try {
                 const res = await fetch('/logs');
+                if (res.status === 401 || res.redirected) { window.location.href = '/login'; return; }
                 const data = await res.json();
                 const logBox = document.getElementById('log-box');
                 if (data.logs.length !== lastLogLen) {
@@ -117,7 +121,6 @@
                 document.getElementById('prog-bar').style.width = p.percent + '%';
                 document.getElementById('prog-detail').innerText = p.detail;
 
-                // 更新下一次执行时间显示
                 const nextRunContainer = document.getElementById('next-run-container');
                 if (data.next_run) {
                     nextRunContainer.classList.remove('hidden');
