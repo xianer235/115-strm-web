@@ -10,6 +10,8 @@
     .btn-disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; filter: grayscale(1); }
     .group-card { background: #1e293b; border: 1px solid #334155; border-radius: 1.5rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
     .group-title { color: #38bdf8; font-weight: 800; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.25rem; border-left: 4px solid #38bdf8; padding-left: 0.75rem; }
+    /* 新增底部声明样式 */
+    .footer-text { text-align: center; padding: 2.5rem 0 1.5rem 0; color: #64748b; font-size: 0.75rem; letter-spacing: 0.05em; }
 </style>
 </head>
 <body class="bg-slate-900 text-slate-200 font-sans">
@@ -63,7 +65,6 @@
                         <label class="block"><span class="text-xs text-slate-500">扫描后缀名 (逗号分隔)</span><input id="extensions" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                     </div>
                 </div>
-
                 <div class="group-card">
                     <h3 class="group-title">2. 目录树获取与验证</h3>
                     <div class="space-y-4">
@@ -72,9 +73,8 @@
                             <label class="block"><span class="text-xs text-slate-500">AList 认证账号</span><input id="alist_user" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                             <label class="block"><span class="text-xs text-slate-500">AList 认证密码</span><input id="alist_pass" type="password" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                         </div>
-                        <div class="h-10"></div> </div>
+                    </div>
                 </div>
-
                 <div class="group-card">
                     <h3 class="group-title">3. 同步策略与任务模式</h3>
                     <div class="space-y-4">
@@ -89,17 +89,14 @@
                         </div>
                         <div class="space-y-3 pt-1">
                             <label class="flex items-center gap-2 cursor-pointer text-sm hover:text-white transition-colors">
-                                <input type="checkbox" id="check_hash" class="w-5 h-5 rounded-lg accent-sky-500"> 
-                                开启 目录树MD5 校验，相同则跳过更新
+                                <input type="checkbox" id="check_hash" class="w-5 h-5 rounded-lg accent-sky-500"> 开启 目录树MD5 校验
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer text-sm hover:text-white transition-colors">
-                                <input type="checkbox" id="sync_clean" class="w-5 h-5 rounded-lg accent-sky-500"> 
-                                自动清理模式 (移除 115 已删除的文件)
+                                <input type="checkbox" id="sync_clean" class="w-5 h-5 rounded-lg accent-sky-500"> 自动清理模式 (移除已删除文件)
                             </label>
                         </div>
                     </div>
                 </div>
-
                 <div class="group-card">
                     <h3 class="group-title">4. 后台安全管理</h3>
                     <div class="space-y-4">
@@ -107,34 +104,35 @@
                             <label class="block"><span class="text-xs text-slate-500">管理账号</span><input id="username" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                             <label class="block"><span class="text-xs text-slate-500">管理密码</span><input id="password" type="password" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
                         </div>
-                        <div class="text-xs text-slate-500 italic mt-6">注：更改后需使用新凭据重新登录。</div>
                     </div>
                 </div>
             </div>
-
             <div class="flex justify-center pt-4">
                 <button onclick="saveSettings()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-24 py-5 rounded-2xl font-black text-lg transition-all active:scale-95 shadow-2xl text-white">💾 保存全部配置</button>
             </div>
         </div>
     </main>
-
+    <footer class="footer-text">
+        <div class="flex items-center justify-center gap-3">
+            <span class="w-8 h-px bg-slate-800"></span>
+            <span>© 2026 Powered by <b class="text-slate-400">Gemini</b> & <b class="text-slate-400">仙儿</b></span>
+            <span class="w-8 h-px bg-slate-800"></span>
+        </div>
+    </footer>
     <script>
         let isRunning = false;
         const btnTexts = ["🌐 联网同步更新", "🛠 本地调试解析", "🔥 强制全量重刷"];
-
         function switchTab(tab) {
             document.getElementById('page-task').classList.toggle('hidden', tab !== 'task');
             document.getElementById('page-settings').classList.toggle('hidden', tab !== 'settings');
             document.getElementById('tab-task').className = tab === 'task' ? 'text-sky-400 border-b-2 border-sky-400 pb-1 uppercase' : 'text-slate-400 hover:text-white pb-1 uppercase';
             document.getElementById('tab-settings').className = tab === 'settings' ? 'text-sky-400 border-b-2 border-sky-400 pb-1 uppercase' : 'text-slate-400 hover:text-white pb-1 uppercase';
         }
-
         async function triggerTask(local, full) {
             if(isRunning) return;
             const res = await fetch('/start', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({use_local: local, force_full: full})});
             if((await res.json()).status === 'started') updateButtonState(true);
         }
-
         function updateButtonState(running) {
             isRunning = running;
             document.querySelectorAll('.btn-ctrl').forEach((btn, i) => {
@@ -142,7 +140,6 @@
                 btn.innerText = running ? "⏳ 任务运行中..." : btnTexts[i];
             });
         }
-
         async function saveSettings() {
             const cfg = {};
             ['alist_url', 'tree_url', 'alist_user', 'alist_pass', 'exclude_levels', 'mount_path', 'cron_hour', 'sync_mode', 'extensions', 'username', 'password'].forEach(id => { 
@@ -153,34 +150,29 @@
             await fetch('/save_settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg)});
             alert('✅ 配置已安全保存');
         }
-
         let lastLogLen = 0;
         setInterval(async () => {
             try {
                 const res = await fetch('/logs');
                 const data = await res.json();
                 if(data.running !== isRunning) updateButtonState(data.running);
-                
                 const logBox = document.getElementById('log-box');
                 if (data.logs.length !== lastLogLen) {
                     logBox.innerHTML = data.logs.join('<br>');
                     logBox.scrollTop = logBox.scrollHeight;
                     lastLogLen = data.logs.length;
                 }
-                
                 const p = data.progress;
                 document.getElementById('prog-step').innerText = p.step;
                 document.getElementById('prog-percent').innerText = p.percent + '%';
                 document.getElementById('prog-bar').style.width = p.percent + '%';
                 document.getElementById('prog-detail').innerText = p.detail;
-
                 if (data.next_run && !data.running) {
                     document.getElementById('next-run-container').classList.remove('hidden');
                     document.getElementById('next-run-time').innerText = data.next_run;
                 } else { document.getElementById('next-run-container').classList.add('hidden'); }
             } catch(e) {}
         }, 1000);
-
         async function init() {
             const res = await fetch('/get_settings');
             const cfg = await res.json();
