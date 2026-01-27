@@ -8,6 +8,8 @@
     @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
     .anim-pulse { animation: pulse-soft 2s infinite; }
     .btn-disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; filter: grayscale(1); }
+    .group-card { background: #1e293b; border: 1px solid #334155; border-radius: 1.5rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .group-title { color: #38bdf8; font-weight: 800; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.25rem; border-left: 4px solid #38bdf8; padding-left: 0.75rem; }
 </style>
 </head>
 <body class="bg-slate-900 text-slate-200 font-sans">
@@ -29,9 +31,7 @@
                 <div class="flex justify-between items-end mb-4">
                     <div>
                         <span id="prog-step" class="text-2xl font-black text-white">就绪</span>
-                        <div id="next-run-container" class="hidden text-xs text-emerald-400 mt-1 font-bold">
-                            ⏱ 下次自动同步: <span id="next-run-time">--:--:--</span>
-                        </div>
+                        <div id="next-run-container" class="hidden text-xs text-emerald-400 mt-1 font-bold">⏱ 下次自动同步: <span id="next-run-time">--:--:--</span></div>
                         <div id="prog-detail" class="text-xs text-slate-400 mt-1 italic">等待指令...</div>
                     </div>
                     <div class="text-right"><span id="prog-percent" class="text-3xl font-mono font-black text-sky-500">0%</span></div>
@@ -40,55 +40,84 @@
                     <div id="prog-bar" class="bg-gradient-to-r from-sky-600 to-sky-400 h-full rounded-full transition-width prog-glow" style="width: 0%"></div>
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="action-buttons">
-                <button onclick="triggerTask(false, false)" class="btn-ctrl bg-sky-600 hover:bg-sky-500 p-5 rounded-2xl font-bold transition-all active:scale-95 shadow-lg">🌐 联网同步更新</button>
-                <button onclick="triggerTask(true, false)" class="btn-ctrl bg-slate-700 hover:bg-slate-600 p-5 rounded-2xl font-bold transition-all active:scale-95 shadow-lg">🛠 本地调试解析</button>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button onclick="triggerTask(false, false)" class="btn-ctrl bg-sky-600 hover:bg-sky-500 p-5 rounded-2xl font-bold transition-all active:scale-95 shadow-lg text-white">🌐 联网同步更新</button>
+                <button onclick="triggerTask(true, false)" class="btn-ctrl bg-slate-700 hover:bg-slate-600 p-5 rounded-2xl font-bold transition-all active:scale-95 shadow-lg text-white">🛠 本地调试解析</button>
                 <button onclick="triggerTask(false, true)" class="btn-ctrl border-2 border-red-500/50 text-red-400 hover:bg-red-500/10 p-5 rounded-2xl font-bold transition-all active:scale-95 shadow-lg">🔥 强制全量重刷</button>
             </div>
             <div class="bg-slate-950/80 rounded-3xl border border-slate-800 p-4 shadow-inner">
                 <div id="log-box" class="h-[400px] overflow-y-auto font-mono text-[13px] text-emerald-500/80 p-2 scroll-smooth"></div>
             </div>
         </div>
-        <div id="page-settings" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 space-y-4 shadow-xl">
-                <h3 class="text-sky-400 font-bold border-b border-slate-700 pb-2 flex items-center gap-2">🔗 核心连接</h3>
-                <label class="block"><span class="text-xs text-slate-500 uppercase">AList 地址</span><input id="alist_url" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none focus:border-sky-500"></label>
-                <label class="block"><span class="text-xs text-slate-500 uppercase">目录树下载 URL</span><input id="tree_url" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none focus:border-sky-500"></label>
-                <div class="grid grid-cols-2 gap-4">
-                    <label class="block"><span class="text-xs text-slate-500">AList 账号</span><input id="alist_user" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
-                    <label class="block"><span class="text-xs text-slate-500">AList 密码</span><input id="alist_pass" type="password" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
+
+        <div id="page-settings" class="hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="group-card">
+                    <h3 class="group-title">1. STRM 结构与命名配置</h3>
+                    <div class="space-y-4">
+                        <label class="block"><span class="text-xs text-slate-500">AList 播放链接前缀</span><input id="alist_url" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none focus:border-sky-500 transition-colors"></label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="block"><span class="text-xs text-slate-500">115 挂载根路径</span><input id="mount_path" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
+                            <label class="block"><span class="text-xs text-slate-500">排除路径层级</span><input id="exclude_levels" type="number" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
+                        </div>
+                        <label class="block"><span class="text-xs text-slate-500">扫描后缀名 (逗号分隔)</span><input id="extensions" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
+                    </div>
+                </div>
+
+                <div class="group-card">
+                    <h3 class="group-title">2. 目录树获取与验证</h3>
+                    <div class="space-y-4">
+                        <label class="block"><span class="text-xs text-slate-500">目录树下载 URL</span><input id="tree_url" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none focus:border-sky-500"></label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="block"><span class="text-xs text-slate-500">AList 认证账号</span><input id="alist_user" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
+                            <label class="block"><span class="text-xs text-slate-500">AList 认证密码</span><input id="alist_pass" type="password" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
+                        </div>
+                        <div class="h-10"></div> </div>
+                </div>
+
+                <div class="group-card">
+                    <h3 class="group-title">3. 同步策略与任务模式</h3>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="block"><span class="text-xs text-slate-500">写入模式</span>
+                                <select id="sync_mode" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none">
+                                    <option value="incremental">增量模式</option>
+                                    <option value="full">全量模式</option>
+                                </select>
+                            </label>
+                            <label class="block"><span class="text-xs text-slate-500">定时频率 (分钟)</span><input id="cron_hour" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
+                        </div>
+                        <div class="space-y-3 pt-1">
+                            <label class="flex items-center gap-2 cursor-pointer text-sm hover:text-white transition-colors">
+                                <input type="checkbox" id="check_hash" class="w-5 h-5 rounded-lg accent-sky-500"> 
+                                开启 目录树MD5 校验，相同则跳过更新
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer text-sm hover:text-white transition-colors">
+                                <input type="checkbox" id="sync_clean" class="w-5 h-5 rounded-lg accent-sky-500"> 
+                                自动清理模式 (移除 115 已删除的文件)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="group-card">
+                    <h3 class="group-title">4. 后台安全管理</h3>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="block"><span class="text-xs text-slate-500">管理账号</span><input id="username" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
+                            <label class="block"><span class="text-xs text-slate-500">管理密码</span><input id="password" type="password" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
+                        </div>
+                        <div class="text-xs text-slate-500 italic mt-6">注：更改后需使用新凭据重新登录。</div>
+                    </div>
                 </div>
             </div>
-            <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 space-y-4 shadow-xl">
-                <h3 class="text-emerald-400 font-bold border-b border-slate-700 pb-2 flex items-center gap-2">⚙️ 自动化逻辑</h3>
-                <div class="grid grid-cols-2 gap-4">
-                    <label class="block"><span class="text-xs text-slate-500">排除路径层级</span><input id="exclude_levels" type="number" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
-                    <label class="block"><span class="text-xs text-slate-500">115 挂载路径</span><input id="mount_path" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <label class="block"><span class="text-xs text-slate-500">同步频率 (分钟)</span><input id="cron_hour" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
-                    <label class="block"><span class="text-xs text-slate-500">写入模式</span>
-                        <select id="sync_mode" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 appearance-none outline-none">
-                            <option value="incremental">增量模式</option>
-                            <option value="full">全量模式</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="flex gap-8 py-2">
-                    <label class="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" id="check_hash" class="w-5 h-5 rounded-lg accent-sky-500"> MD5校验</label>
-                    <label class="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" id="sync_clean" class="w-5 h-5 rounded-lg accent-sky-500"> 自动清理</label>
-                </div>
-                <label class="block"><span class="text-xs text-slate-500">文件白名单</span><input id="extensions" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1"></label>
-            </div>
-            <div class="md:col-span-2 bg-slate-800 p-6 rounded-3xl border border-slate-700 flex justify-between items-center shadow-xl">
-                <div class="flex gap-4">
-                    <input id="username" placeholder="后台账号" class="bg-slate-900 border-slate-700 rounded-xl p-3 text-sm">
-                    <input id="password" type="password" placeholder="后台密码" class="bg-slate-900 border-slate-700 rounded-xl p-3 text-sm">
-                </div>
-                <button onclick="saveSettings()" class="bg-emerald-600 hover:bg-emerald-500 px-12 py-4 rounded-2xl font-bold transition-all active:scale-95 shadow-lg">保存全部设置</button>
+
+            <div class="flex justify-center pt-4">
+                <button onclick="saveSettings()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-24 py-5 rounded-2xl font-black text-lg transition-all active:scale-95 shadow-2xl text-white">💾 保存全部配置</button>
             </div>
         </div>
     </main>
+
     <script>
         let isRunning = false;
         const btnTexts = ["🌐 联网同步更新", "🛠 本地调试解析", "🔥 强制全量重刷"];
@@ -96,52 +125,42 @@
         function switchTab(tab) {
             document.getElementById('page-task').classList.toggle('hidden', tab !== 'task');
             document.getElementById('page-settings').classList.toggle('hidden', tab !== 'settings');
+            document.getElementById('tab-task').className = tab === 'task' ? 'text-sky-400 border-b-2 border-sky-400 pb-1 uppercase' : 'text-slate-400 hover:text-white pb-1 uppercase';
+            document.getElementById('tab-settings').className = tab === 'settings' ? 'text-sky-400 border-b-2 border-sky-400 pb-1 uppercase' : 'text-slate-400 hover:text-white pb-1 uppercase';
         }
 
         async function triggerTask(local, full) {
             if(isRunning) return;
             const res = await fetch('/start', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({use_local: local, force_full: full})});
-            const data = await res.json();
-            if(data.status === 'started') {
-                updateButtonState(true);
-            }
+            if((await res.json()).status === 'started') updateButtonState(true);
         }
 
         function updateButtonState(running) {
             isRunning = running;
-            const btns = document.querySelectorAll('.btn-ctrl');
-            btns.forEach((btn, index) => {
-                if(running) {
-                    btn.classList.add('btn-disabled');
-                    btn.innerText = "⏳ 任务运行中...";
-                } else {
-                    btn.classList.remove('btn-disabled');
-                    btn.innerText = btnTexts[index];
-                }
+            document.querySelectorAll('.btn-ctrl').forEach((btn, i) => {
+                btn.classList.toggle('btn-disabled', running);
+                btn.innerText = running ? "⏳ 任务运行中..." : btnTexts[i];
             });
         }
 
         async function saveSettings() {
             const cfg = {};
-            ['alist_url', 'tree_url', 'alist_user', 'alist_pass', 'exclude_levels', 'mount_path', 'cron_hour', 'sync_mode', 'extensions', 'username', 'password'].forEach(id => { cfg[id] = document.getElementById(id).value; });
+            ['alist_url', 'tree_url', 'alist_user', 'alist_pass', 'exclude_levels', 'mount_path', 'cron_hour', 'sync_mode', 'extensions', 'username', 'password'].forEach(id => { 
+                const el = document.getElementById(id); if(el) cfg[id] = el.value;
+            });
             cfg.check_hash = document.getElementById('check_hash').checked;
             cfg.sync_clean = document.getElementById('sync_clean').checked;
             await fetch('/save_settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg)});
-            alert('设置保存成功！');
+            alert('✅ 配置已安全保存');
         }
 
         let lastLogLen = 0;
         setInterval(async () => {
             try {
                 const res = await fetch('/logs');
-                if (res.status === 401) { window.location.href = '/login'; return; }
                 const data = await res.json();
+                if(data.running !== isRunning) updateButtonState(data.running);
                 
-                // 根据后端状态同步按钮
-                if(data.running !== isRunning) {
-                    updateButtonState(data.running);
-                }
-
                 const logBox = document.getElementById('log-box');
                 if (data.logs.length !== lastLogLen) {
                     logBox.innerHTML = data.logs.join('<br>');
@@ -155,19 +174,10 @@
                 document.getElementById('prog-bar').style.width = p.percent + '%';
                 document.getElementById('prog-detail').innerText = p.detail;
 
-                if (data.running) {
-                    document.getElementById('prog-bar').classList.add('anim-pulse');
-                } else {
-                    document.getElementById('prog-bar').classList.remove('anim-pulse');
-                }
-
-                const nextRunContainer = document.getElementById('next-run-container');
                 if (data.next_run && !data.running) {
-                    nextRunContainer.classList.remove('hidden');
+                    document.getElementById('next-run-container').classList.remove('hidden');
                     document.getElementById('next-run-time').innerText = data.next_run;
-                } else {
-                    nextRunContainer.classList.add('hidden');
-                }
+                } else { document.getElementById('next-run-container').classList.add('hidden'); }
             } catch(e) {}
         }, 1000);
 
@@ -176,10 +186,7 @@
             const cfg = await res.json();
             Object.keys(cfg).forEach(k => {
                 const el = document.getElementById(k);
-                if(el) {
-                    if(el.type === 'checkbox') el.checked = cfg[k];
-                    else el.value = cfg[k];
-                }
+                if(el) { if(el.type === 'checkbox') el.checked = cfg[k]; else el.value = cfg[k]; }
             });
         }
         init();
