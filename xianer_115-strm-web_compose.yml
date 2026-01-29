@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  115-strm-web:
+    image: xianer/115-strm-web:latest
+    container_name: 115-strm-web
+    volumes:
+      - /Docker/115strmxianer/strm:/app/strm
+      - /Docker/115strmxianer/logs:/app/logs
+      - /Docker/115strmxianer/config:/app/config
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "18080:18080"
+    environment:
+      - TZ=Asia/Shanghai
+    restart: always
