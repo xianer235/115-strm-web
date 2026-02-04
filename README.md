@@ -1,4 +1,5 @@
 115-STRM-WEB (多目录树增强版)
+
 本项目在[suixing8/115-strm](https://github.com/suixing8/115-strm)核心解析逻辑的基础上，进行了全方位的架构升级。使用GEMINI协助开发，通过 FastAPI 构建了可视化的 Web 管理后台，并引入了双目录树合并机制，专为拥有海量资源的 115 网盘用户设计。
 
 核心功能：1.基于115网盘目录树文件生成本地strm文件，配合openlist可实现视频302播放1.生成速度极快，每秒生成数千近万个strm 文件；2.支持自定义过滤文件类型； 3.支持openlist登录下载目录树； 4.支持定时任务、增/全量更新量、目录树文件哈希校验判断是否跳过更新、清理失效文件；5.支持WEB管理，这样可以方便修改与触发手动更新，而且进度条还很丝滑；6.最新版支持两个目录树（可选），可以大库（存的大包）、小库（新增加、连载更新）分开生成目录树，这样可以在更新新内容时减少目录树生成的等待时间；
@@ -34,8 +35,11 @@ services:
       - TZ=Asia/Shanghai
 
 📸 运行预览
+
+
 <img width="846" height="902" alt="image" src="https://github.com/user-attachments/assets/141a6989-a212-4e54-b35f-db67a1ea73f2" />
 <img width="2560" height="1373" alt="image" src="https://github.com/user-attachments/assets/1b4dab2c-b591-4013-8933-49bb653543ba" />
-<img width="2560" height="1379" alt="image" src="https://github.com/user-attachments/assets/ca4d28aa-487f-4027-930c-04afae4fcca3" />
+<img width="2560" height="1366" alt="image" src="https://github.com/user-attachments/assets/1e67ac9f-0b0f-4c15-aaa5-10d458d3fb48" />
+
 
 
