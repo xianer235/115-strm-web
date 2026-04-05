@@ -15,3 +15,7 @@ config/
 
 .codex/
 .cursor/
+
+# macOS Finder metadata
+.DS_Store
+**/.DS_Store
