@@ -461,7 +461,7 @@
                         <label class="block"><span class="text-xs text-slate-500">AList/OpenList 访问链接前缀 (如 http://192.168.1.5:5244)</span><input id="alist_url" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none focus:border-sky-500 transition-colors"></label>
                         <label class="block">
                             <span class="text-xs text-slate-500 inline-flex items-center gap-2">
-                                AList/OpenList Token (目录树下载与 API 统一使用)
+                                AList/OpenList Token（目录树下载、文件夹监控、Webhook 统一认证）
                                 <button type="button" class="info-dot" onclick="showHelp('AList/OpenList Token：在 OpenList 或 AList 后台创建的令牌。目录树下载、文件夹监控 API、Webhook 触发后的刷新都依赖它，建议使用最小权限。')">i</button>
                             </span>
                             <input id="alist_token" class="w-full bg-slate-900 border-slate-700 rounded-xl p-3 text-sm mt-1 outline-none focus:border-sky-500 transition-colors" placeholder="AList/OpenList 后台生成的令牌">
@@ -479,13 +479,21 @@
 
                 <div class="group-card xl:col-span-7">
                     <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
-                        <h3 class="group-title">2. 目录树多源配置 (分块解析增强版)</h3>
+                        <h3 class="group-title">2. 目录树多源配置（Token 认证 · 支持多链接并行解析）</h3>
                         <button onclick="addTreeRow()" class="text-xs bg-sky-500/20 text-sky-400 hover:bg-sky-500 hover:text-white px-3 py-1 rounded-lg border border-sky-500/40 transition-all font-bold">+ 添加目录树链接</button>
                     </div>
                     <div id="trees-container" class="space-y-3"></div>
-                    <div class="mt-6 pt-4 border-t border-slate-700/50 text-xs text-slate-400 leading-6">
-                        原有目录树模式完整保留，只有认证方式改为 Token。目录树下载 URL 仍然支持多源拆分解析。<br>
-                        由于 115 网盘目录树规则，排除层级建议最小为 1；如果路径需要补全，请优先填写“父文件夹路径前缀”。
+                    <div class=”mt-6 pt-4 border-t border-slate-700/50 text-xs text-slate-400 leading-6”>
+                        目录树模式完整保留，认证统一走上方配置的 AList/OpenList Token，无需额外填写 Cookie。<br>
+                        支持添加多个下载链接并行解析，适用于多帐号、多挂载路径等拆分场景。<br><br>
+                        📋 字段说明与填写范例：<br>
+                        • 目录树下载 URL → tree.txt 的完整直链地址<br>
+                        &nbsp;&nbsp;例：http://192.168.1.5:5244/d/115/电影/tree.txt<br>
+                        • 父文件夹路径前缀 → tree.txt 内路径不完整时，用于补全缺失的父级目录<br>
+                        &nbsp;&nbsp;例：tree.txt 内仅记录「漫威/钢铁侠」，前缀填「电影/系列」<br>
+                        &nbsp;&nbsp;→ 最终 strm 路径为 /strm/电影/系列/漫威/钢铁侠<br>
+                        • 排除层级 → 跳过 tree.txt 前 N 层目录再开始生成<br>
+                        &nbsp;&nbsp;115 网盘目录树根节点为占位层级，最小须设为 1（即至少跳过根目录）
                     </div>
                 </div>
 
@@ -1037,14 +1045,14 @@
             row.innerHTML = `
                 <div class="col-span-12 md:col-span-5">
                     <span class="text-[10px] text-slate-500 ml-1 font-bold uppercase">目录树下载 URL</span>
-                    <input class="t-url w-full bg-slate-950 border-slate-700 rounded-lg p-2.5 text-sm mt-1 outline-none focus:border-sky-500" value="${escapeHtml(data.url)}" placeholder="AList/OpenList 中的 tree.txt 下载链接">
+                    <input class="t-url w-full bg-slate-950 border-slate-700 rounded-lg p-2.5 text-sm mt-1 outline-none focus:border-sky-500" value="${escapeHtml(data.url)}" placeholder="http://192.168.1.5:5244/d/115/电影/tree.txt">
                 </div>
                 <div class="col-span-7 md:col-span-4">
-                    <span class="text-[10px] text-slate-500 ml-1 font-bold uppercase">父文件夹路径前缀 (选填)</span>
-                    <input class="t-prefix w-full bg-slate-950 border-slate-700 rounded-lg p-2.5 text-sm mt-1 outline-none focus:border-sky-500" value="${escapeHtml(data.prefix)}" placeholder="补全丢失的路径，如: 电影/漫威">
+                    <span class="text-[10px] text-slate-500 ml-1 font-bold uppercase">父文件夹路径前缀（选填）</span>
+                    <input class="t-prefix w-full bg-slate-950 border-slate-700 rounded-lg p-2.5 text-sm mt-1 outline-none focus:border-sky-500" value="${escapeHtml(data.prefix)}" placeholder="补全缺失的父级路径，如：电影/系列">
                 </div>
                 <div class="col-span-3 md:col-span-2">
-                    <span class="text-[10px] text-slate-500 ml-1 font-bold uppercase">排除层级</span>
+                    <span class="text-[10px] text-slate-500 ml-1 font-bold uppercase">排除层级（最小 1）</span>
                     <input type="number" min="1" class="t-exclude w-full bg-slate-950 border-slate-700 rounded-lg p-2.5 text-sm mt-1 outline-none focus:border-sky-500" value="${Number(data.exclude || 1)}">
                 </div>
                 <div class="col-span-2 md:col-span-1">

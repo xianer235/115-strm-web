@@ -1,10 +1,10 @@
 {
-  "version": "2.2.3",
-  "buildDate": "2026-04-01T10:25:32+08:00",
+  "version": "2.2.4",
+  "buildDate": "2026-06-28T00:00:00+08:00",
   "notes": [
-    "文件夹监控任务递归扫描时对每个访问目录执行 refresh，避免旧缓存漏掉已存在目录中的新文件。",
-    "关闭文件夹修改时间校验后，会重新枚举扫描范围内目录内容，确保新增视频文件能被发现。",
-    "更新版本信息至 2.2.3，并补充对应更新日志。"
+    "优化目录树多源配置区块的引导文案，增加字段填写范例，降低上手门槛。",
+    "Token 认证标签更新为统一认证说明，涵盖目录树下载、文件夹监控与 Webhook 场景。",
+    "更新版本信息至 2.2.4。"
   ],
   "changelogUrl": "https://github.com/xianer235/115-strm-web/blob/main/CHANGELOG.md",
   "projectUrl": "https://github.com/xianer235/115-strm-web"
