@@ -792,6 +792,26 @@ def save_tree_cache(cache_path: str, rel_paths: List[str]) -> None:
         json.dump(rel_paths, f, ensure_ascii=False)
 
 
+def _generate_strm_and_insert(
+    rel_path: str,
+    alist_base: str,
+    mount_path: str,
+    strm_root: str,
+    sync_mode: str,
+    force_full: bool,
+    cursor: sqlite3.Cursor,
+) -> None:
+    """Generate a .strm file and insert its hash into current_scan (temp table)."""
+    target = os.path.join(strm_root, rel_path + ".strm")
+    if not os.path.exists(target) or sync_mode == "full" or force_full:
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        encoded_path = urllib.parse.quote(f"/{mount_path}/{rel_path}")
+        with open(target, "w", encoding="utf-8") as sf:
+            sf.write(f"{alist_base}/d{encoded_path}")
+    path_hash = hashlib.md5(rel_path.encode("utf-8")).hexdigest()
+    cursor.execute("INSERT OR IGNORE INTO current_scan VALUES (?, ?)", (path_hash, rel_path))
+
+
 async def run_sync(use_local: bool = False, force_full: bool = False) -> None:
     if task_status["running"]:
         return
@@ -801,6 +821,8 @@ async def run_sync(use_local: bool = False, force_full: bool = False) -> None:
     os.makedirs(TREE_DIR, exist_ok=True)
     ensure_db()
 
+    conn = None
+    cursor = None
     try:
         config_error = validate_tree_runtime_config(cfg, use_local)
         if config_error:
@@ -809,7 +831,6 @@ async def run_sync(use_local: bool = False, force_full: bool = False) -> None:
         trees = [t for t in cfg.get("trees", []) if t.get("url")]
         downloaded_tree_count = 0
 
-        scan_results: List[str] = []
         user_exts = get_user_extensions(cfg)
         check_hash_enabled = bool(cfg.get("check_hash", False))
         can_skip_by_hash = check_hash_enabled and cfg.get("sync_mode") != "full" and not force_full
@@ -826,6 +847,16 @@ async def run_sync(use_local: bool = False, force_full: bool = False) -> None:
             f"开始目录树任务：源 {len(trees)} 个，模式 {cfg.get('sync_mode', 'incremental')}，MD5校验 {'开' if check_hash_enabled else '关'}"
         )
 
+        # Open DB connection early – temp table and strm writes stream directly,
+        # avoiding the large in-memory scan_results list.
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("CREATE TEMP TABLE current_scan (path_hash TEXT PRIMARY KEY, relative_path TEXT)")
+
+        alist_base = cfg["alist_url"].rstrip("/")
+        mount_path = cfg["mount_path"].strip("/")
+        total_files = 0
+
         for idx, tree in enumerate(trees):
             raw_path = f"{TREE_DIR}/tree_{idx}.raw"
             txt_path = f"{TREE_DIR}/tree_{idx}.txt"
@@ -834,6 +865,7 @@ async def run_sync(use_local: bool = False, force_full: bool = False) -> None:
             tree_cache_path = os.path.join(TREE_DIR, f"cache_{tree_key}.json")
             tree_scan_results: List[str] = []
             parse_signature = ""
+            parsed_this_tree = False
 
             if not use_local:
                 await refresh_tree_file(tree["url"], cfg)
@@ -851,7 +883,12 @@ async def run_sync(use_local: bool = False, force_full: bool = False) -> None:
                         cached_paths = await asyncio.to_thread(load_tree_cache, tree_cache_path)
                         if cached_paths is not None:
                             skipped_tree_count += 1
-                            scan_results.extend(cached_paths)
+                            for rel_path in cached_paths:
+                                _generate_strm_and_insert(
+                                    rel_path, alist_base, mount_path, STRM_ROOT,
+                                    cfg["sync_mode"], force_full, cursor,
+                                )
+                            total_files += len(cached_paths)
                             current_tree_hashes[tree_key] = {"parse_signature": parse_signature}
                             await write_log(f"第 {idx + 1} 个目录树 MD5 无变化，复用缓存 {len(cached_paths)} 条")
                             continue
@@ -872,7 +909,6 @@ async def run_sync(use_local: bool = False, force_full: bool = False) -> None:
                 if code != 0:
                     raise RuntimeError(f"目录树 {idx + 1} 转码失败，退出码: {code}")
 
-            parsed_this_tree = False
             if os.path.exists(txt_path):
                 await update_progress("解析中", 20 + (idx / max(len(trees), 1) * 20), f"处理第 {idx + 1} 个结构...")
                 path_stack: Dict[int, str] = {}
@@ -891,8 +927,15 @@ async def run_sync(use_local: bool = False, force_full: bool = False) -> None:
                             rel_parts = full_parts[exclude:]
                             final_rel_path = join_relative_path(prefix, "/".join(rel_parts))
                             if final_rel_path:
+                                _generate_strm_and_insert(
+                                    final_rel_path, alist_base, mount_path, STRM_ROOT,
+                                    cfg["sync_mode"], force_full, cursor,
+                                )
                                 tree_scan_results.append(final_rel_path)
-                                scan_results.append(final_rel_path)
+                                total_files += 1
+                                if total_files % 1000 == 0:
+                                    await update_progress("生成STRM", 40 + min(total_files / 100000 * 50, 50),
+                                                          f"已处理: {total_files} 文件")
 
             if parse_signature:
                 current_tree_hashes[tree_key] = {"parse_signature": parse_signature}
@@ -917,7 +960,6 @@ async def run_sync(use_local: bool = False, force_full: bool = False) -> None:
             await update_progress("任务完成", 100, "MD5 校验命中：无变动")
             return
 
-        total_files = len(scan_results)
         await write_log(f"本轮概况：下载 {downloaded_tree_count} 个，缓存复用 {skipped_tree_count} 个，解析 {parsed_tree_count} 个")
         await write_log(f"解析完成，共发现 {total_files} 个有效文件")
         if total_files == 0:
@@ -926,26 +968,6 @@ async def run_sync(use_local: bool = False, force_full: bool = False) -> None:
                 await update_progress("任务完成", 100, "目录树下载成功，但未匹配可生成文件")
                 return
             raise RuntimeError("扫描结果为空，且未成功下载目录树")
-
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("CREATE TEMP TABLE current_scan (path_hash TEXT PRIMARY KEY, relative_path TEXT)")
-
-        alist_base = cfg["alist_url"].rstrip("/")
-        mount_path = cfg["mount_path"].strip("/")
-
-        for i, rel_path in enumerate(scan_results):
-            target = os.path.join(STRM_ROOT, rel_path + ".strm")
-            if not os.path.exists(target) or cfg["sync_mode"] == "full" or force_full:
-                os.makedirs(os.path.dirname(target), exist_ok=True)
-                encoded_path = urllib.parse.quote(f"/{mount_path}/{rel_path}")
-                with open(target, "w", encoding="utf-8") as sf:
-                    sf.write(f"{alist_base}/d{encoded_path}")
-
-            path_hash = hashlib.md5(rel_path.encode("utf-8")).hexdigest()
-            cursor.execute("INSERT OR IGNORE INTO current_scan VALUES (?, ?)", (path_hash, rel_path))
-            if total_files and i % 1000 == 0:
-                await update_progress("生成STRM", 40 + (i / total_files * 50), f"进度: {i}/{total_files}")
 
         if cfg.get("sync_clean", True):
             cursor.execute(
@@ -958,16 +980,24 @@ async def run_sync(use_local: bool = False, force_full: bool = False) -> None:
 
         # 无论是否启用物理清理，数据库都应只保留本轮扫描结果，避免陈旧数据长期累积
         cursor.execute("DELETE FROM local_files WHERE path_hash NOT IN (SELECT path_hash FROM current_scan)")
-
         cursor.execute("INSERT OR REPLACE INTO local_files SELECT * FROM current_scan")
         conn.commit()
-        conn.close()
         await update_progress("任务完成", 100, f"同步成功: {total_files} 文件")
         await write_log("✅ 任务结束")
     except Exception as exc:
         await write_log(f"❌ 运行故障: {exc}")
         await update_progress("任务中止", 0, str(exc))
     finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
         task_status["running"] = False
         schedule_ui_state_push(0)
 
