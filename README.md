@@ -54,6 +54,85 @@ docker compose up -d
 - 用户名：`admin`
 - 密码：`admin123`
 
+## Docker 用户配置与使用指南
+
+本章节按 Docker 用户常见使用路径编排，目标是做到「部署后可直接上手」。
+
+### 1) 建议的宿主机目录结构
+
+```text
+/opt/115-strm-web/
+├── compose.yml
+├── config/   # 配置与数据库（最重要）
+├── strm/     # 生成的 .strm 文件
+└── log/      # 运行日志
+```
+
+- `config/` 建议纳入定期备份。
+- `strm/` 建议映射到媒体库扫描路径（或其子目录）。
+- `log/` 建议保留近 7-30 天，避免长期累积。
+
+### 2) 启动与访问
+
+```bash
+cd /opt/115-strm-web
+docker compose up -d
+docker compose ps
+```
+
+- 浏览器访问：`http://你的服务器IP:18080`
+- 首次登录：`admin / admin123`
+
+### 3) 首次必须完成的配置清单（按页面顺序）
+
+在 `参数配置` 页面建议至少完成以下项：
+
+1. `AList/OpenList 访问链接前缀`（例如 `http://192.168.1.5:5244`）
+2. `AList/OpenList Token`（用于目录树和监控 API）
+3. `115 挂载根路径`（例如 `/115`）
+4. `115 Cookie`（用于资源导入/离线相关能力）
+5. `TG 订阅源管理`（添加频道、设置抓取线程数）
+6. 页面底部点击 `保存全部配置`
+
+若你开启 webhook：
+
+- 在 `文件夹监控任务` 中创建任务并开启 webhook。
+- 在调用端（如 CloudSaver/油猴脚本）使用 `http://你的IP:18080/webhook/任务名`。
+
+### 4) 推荐日常使用流程
+
+1. 在 `参数配置 -> TG 订阅源管理` 维护频道源（启用/停用/批量管理）。
+2. 在 `资源中心` 执行 `同步频道` 或关键词搜索。
+3. 命中资源后，打开导入卡片并创建导入任务。
+4. 在 `文件夹监控任务` 或 `影视订阅任务` 中完成后续自动化刷新与追更。
+
+### 5) 升级与回滚（Docker）
+
+升级：
+
+```bash
+cd /opt/115-strm-web
+docker compose pull
+docker compose up -d
+```
+
+升级前建议备份：
+
+- `config/settings.json`
+- `config/data.db`
+- `compose.yml`
+
+快速回滚思路：
+
+- 将 `compose.yml` 中镜像标签改回旧版本（不要用 `latest`）。
+- 执行 `docker compose up -d` 重新拉起。
+
+### 6) 备份与迁移建议
+
+- 迁移到新机器时，至少带走 `config/` 和 `compose.yml`。
+- 如果你希望保留既有 `.strm` 结果，同时带走 `strm/`。
+- 恢复后先启动容器，再进页面检查关键配置是否正确（尤其是 AList 地址、Token、挂载根路径、Cookie）。
+
 ## 目录说明
 
 - `/app/strm`：生成的 `.strm` 文件目录。
