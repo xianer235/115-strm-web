@@ -1,10 +1,11 @@
 {
-  "version": "2.2.4",
-  "buildDate": "2026-06-28T00:00:00+08:00",
+  "version": "2.2.5",
+  "buildDate": "2026-08-02T21:45:10+08:00",
   "notes": [
-    "优化目录树多源配置区块的引导文案，增加字段填写范例，降低上手门槛。",
-    "Token 认证标签更新为统一认证说明，涵盖目录树下载、文件夹监控与 Webhook 场景。",
-    "更新版本信息至 2.2.4。"
+    "目录树解析与路径缓存改为逐行处理，避免在内存中保留完整扫描结果。",
+    "使用有限批次和 scan_token 同步文件索引，降低大目录树任务的 Python 内存峰值。",
+    "任务结束后关闭数据库并回收 Python 与 glibc 可释放的进程内存。",
+    "更新版本信息至 2.2.5。"
   ],
   "changelogUrl": "https://github.com/xianer235/115-strm-web/blob/main/CHANGELOG.md",
   "projectUrl": "https://github.com/xianer235/115-strm-web"
